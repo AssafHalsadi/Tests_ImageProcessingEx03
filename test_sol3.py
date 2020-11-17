@@ -1,13 +1,17 @@
 import unittest
 
-import sol2 as sol
+import sol3 as sol
 from imageio import imread
 from skimage.color import rgb2gray
 import numpy as np
-from scipy.io import wavfile
+from sympy.ntheory import binomial_coefficients_list
 import os
 import inspect
+import runner as run
 import ast
+
+
+# ================================ helper functions ================================
 
 
 def read_image(filename, representation):
@@ -36,41 +40,16 @@ def read_image(filename, representation):
     return im_float
 
 
-def _generate_images(names):
+def _generate_images(directory_path):
     """
     Generates a list of images from a list of image names.
     :param names: List of strings.
     :return: A list of grayscale images.
     """
-    images = []
-    for name in names:
-        images.append((read_image(os.path.join(os.path.abspath(r'external'), f"{name}.jpg"), 1), name))
+    directory = os.path.abspath(directory_path)
+    images = [(read_image(os.path.join(directory, filename), 1), filename) for filename in os.listdir(directory) if
+              filename.endswith('.jpg')]
     return images
-
-
-pdf_ratio = 1.25
-smallest_ratio = 0.26
-largest_ratio = 3.9
-double_ratio = 2
-half_ratio = 0.5
-same = 1
-ratios = [pdf_ratio, smallest_ratio, largest_ratio, double_ratio, half_ratio, same]
-
-arr_pdf = (np.arange(1000), "arr_pdf")
-arr_large_zeros = (np.zeros_like(arr_pdf), "arr_large_zeros")
-arr_large_ones = (np.ones_like(arr_pdf), "arr_large_ones")
-arr_normal = (np.array([1, 2, 3]), "arr_normal")
-arr_same_val = (np.array([1, 1, 1]), "arr_same_val")
-arr_zero_vals = (np.array([0, 0, 0]), "arr_zero_vals")
-arr_single_cell = (np.array([1]), "arr_single_cell")
-arr_single_zero = (np.array([0]), "arr_single_zero")
-arr_empty = (np.array([]), "arr_empty")
-
-test_arrs = [arr_pdf, arr_normal, arr_same_val, arr_zero_vals, arr_single_cell, arr_single_zero, arr_empty,
-             arr_large_ones, arr_large_zeros]
-
-
-# ================================ helper functions ================================
 
 
 def _does_contain(function, statements):
@@ -110,10 +89,6 @@ class TestEx3(unittest.TestCase):
     """
     The unittest testing suite.
     """
-    # Path to example wav supplied by the course's staff.
-    aria_path = os.path.abspath(r'external/aria_4kHz.wav')
-    # Path to example jpg supplied by the course's staff.
-    monkey_path = os.path.abspath(r'external/monkey.jpg')
 
     # ================================ setup/teardown functions ================================
 
@@ -123,12 +98,129 @@ class TestEx3(unittest.TestCase):
         Generates all necessary data for tests, runs before all other tests.
         :return: -
         """
-        pass
+        cls.images = _generate_images(r'external')
+        cls.filter_sizes = [3, 5, 7, 9]
 
-    # ================================ Part I Tests ================================
+    # ================================ general helpers ================================
 
+    def _structure_tester(self, func, signature, no_loops, no_return):
+        """
+        Checks a given function's structure is correct according to the pdf.
+        :param func: The given function.
+        :param signature: Expected signature.
+        :param no_loops: True if there should be no loops.
+        :param no_return: True if the function returns nothing.
+        :return: -
+        """
+        func_name = str(func.__name__)
 
+        # Check no loops were used in implementation if needed
+        if no_loops:
+            self.assertEqual(False, _uses_loop(func),
+                             msg=f"Your {func_name} implementation should not contain loops")
+
+        # Check there is no return statement if needed
+        if no_return:
+            self.assertEqual(False, _has_return(func),
+                             msg=f"Your {func_name} implementation should not have a return statement")
+
+        # Checks the signature of the function equals the pdf
+        self.assertEqual(signature, str(inspect.signature(func)),
+                         msg=f"{func_name} signature should be {signature} but is {str(inspect.signature(func))}")
+
+    # ================================ Part III Tests ================================
+
+    # -------------------------------- 3.1 test module --------------------------------
+
+    def _test_pyr_module(self, func, orig_matrix, test_name, max_levels, filter_size):
+
+        name = func.__name__
+
+        output = func(orig_matrix, max_levels, filter_size)
+        true_binom = np.array(binomial_coefficients_list(filter_size - 1))
+        true_binom = (true_binom / np.sum(true_binom)).reshape(1, true_binom.shape[0])
+        orig_shape = orig_matrix.shape
+        max_val = np.max(orig_matrix)
+        test_name = f"(test on : {test_name}, max_levels: {max_levels}, filter_size: {filter_size})"
+
+        # Checks output shape
+        self.assertEqual(2, len(output), msg=f'{name} should return an array of length 2')
+        pyr, filter_vec = output
+
+        # Checks pyr is a normal python array (list)
+        self.assertEqual(type([]), type(pyr), msg=f'In {name}, pyr type should be a normal python array (list)')
+
+        # Checks pyramid size
+        self.assertTrue(max_levels >= len(pyr),
+                        msg=f'pyr size should not exceed "max_levels" in {name} function on {test_name}')
+
+        # Checks filter_vec is correct
+        self.assertEqual(f"(1, {filter_size})", str(filter_vec.shape),
+                         msg=f"filter_vec's shape should be (1, {filter_size}), but is {filter_vec.shape}")
+        self.assertIsNone(np.testing.assert_array_equal(true_binom, filter_vec,
+                                                        err_msg=f"\nERROR WAS:\nfilter_vec should look like {true_binom}, but looks like {filter_vec}\n"))
+
+        # Checks pyr's dimensions
+        last_lvl_shape = np.array(pyr[-1]).shape
+        self.assertTrue(last_lvl_shape[0] >= 16 and last_lvl_shape[1] >= 16,
+                        msg=f"In {name}, shape of pyr's last level should not be smaller than (16,16)")
+
+        # TODO: Check that the dimensions are definitely going to be powers of 2
+        cur_row_amount, cur_col_amount = orig_shape
+
+        for i, level in enumerate(pyr):
+            self.assertEqual(f"{cur_row_amount, cur_col_amount}", str(np.array(level).shape),
+                             msg=f"level {i} in pyr created by {name} on the matrix named '{test_name}' should be of size ({cur_row_amount, cur_col_amount})")
+            cur_row_amount = np.int(cur_row_amount / 2)
+            cur_col_amount = np.int(cur_col_amount / 2)
+
+            if name == "build_gussian_pyramid":
+                self.assertTrue((0 <= np.min(level) and np.max(level) <= max_val),
+                                msg=f"Values of pyr levels in {name}'s output should not be higher than the original image's max value, maybe you forgot to normalize the filter_vec?\nmin_val:{np.min(level)}, max_val:{np.max(level)},level:{i},test_name:{test_name}")
+
+    # -------------------------------- 3.1 helpers --------------------------------
+
+    def _test_pyr_static(self, func):
+
+        # Test 'test_gaussian_pyr' structure
+        self._structure_tester(func, r'(im, max_levels, filter_size)', False, False)
+
+        # Basic images test, fixed filter size and fixed default max_levels from pdf
+        for img in self.images:
+            self._test_pyr_module(func, img[0], img[1],
+                                  np.int(np.log(np.array(img[0]).shape[0]) - 1), 3)
+
+    def _test_pyr_random(self, func):
+
+        # Basic images, random max level and random filter size
+        for img in self.images:
+            self._test_pyr_module(func, img[0], img[1],
+                                  np.random.choice(np.arange(1, np.int(np.log(np.array(img[0]).shape[0]) - 1))),
+                                  np.random.choice(self.filter_sizes))
+
+        # Random stress test
+        for i in range(8):
+            length = 2 ** (i + 7)
+            for j in range(9 - i):
+                orig_matrix = np.random.randint(255, size=(length, length))
+                self._test_pyr_module(func, orig_matrix, f"random(0,255)_sizeof_({length}, {length})",
+                                      i + 6, np.random.choice(self.filter_sizes))
+
+    # -------------------------------- 3.1 tests --------------------------------
+
+    def test_build_gaussian_pyramid_static(self):
+        self._test_pyr_static(sol.build_gaussian_pyramid)
+
+    def test_build_gaussian_pyramid_random(self):
+        self._test_pyr_random(sol.build_gaussian_pyramid)
+
+    def test_build_laplacian_pyramid_static(self):
+        self._test_pyr_static(sol.build_laplacian_pyramid)
+
+    def test_build_laplacian_pyramid_random(self):
+        self._test_pyr_random(sol.build_laplacian_pyramid)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    runner = run.CustomTextTestRunner()
+    unittest.main(testRunner=runner)

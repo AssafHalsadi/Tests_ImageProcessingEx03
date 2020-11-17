@@ -11,14 +11,14 @@ class CustomTextTestResult(unittest.runner.TextTestResult):
         """Initializes the test number generator, then calls super impl"""
 
         self.test_numbers = itertools.count(1)
-
+        stream.write(f"================================================\n            ==== Starting Tests ====\n================================================\n")
         return super(CustomTextTestResult, self).__init__(stream, descriptions, verbosity)
 
     def startTest(self, test):
         """Writes the test number to the stream if showAll is set, then calls super impl"""
 
         if self.showAll:
-            progress = '[{0}/{1}] '.format(next(self.test_numbers), self.test_case_count)
+            progress = f'[{next(self.test_numbers)}/{self.test_case_count}] '
             self.stream.write(progress)
 
             # Also store the progress in the test itself, so that if it errors,
@@ -36,7 +36,7 @@ class CustomTextTestResult(unittest.runner.TextTestResult):
         if self.showAll:
             info = 'Test number: {index}\n{info}'.format(
                 index=test.progress_index,
-                info=re.sub("AssertionError:", "\nERROR WAS:\nAssertionError:", info)
+                info=re.sub("AssertionError:(.*?):", "\nERROR WAS:\n", info)
             )
 
         return info
