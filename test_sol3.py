@@ -132,42 +132,54 @@ class TestEx3(unittest.TestCase):
 
     # -------------------------------- 3.1 test module --------------------------------
 
-    def _test_pyr_module(self, func, orig_matrix, test_name, max_levels, filter_size):
-
+    def _init_pyr_module_variables(self, filter_size, func, max_levels, orig_matrix, test_name):
+        """
+        Initiates all of the needed values for the pyramid testing module.
+        :param filter_size: The size of the asked filter.
+        :param func: The function to test.
+        :param max_levels: The given max_levels parameter.
+        :param orig_matrix: The matrix/image to test on.
+        :param test_name: Name of the matrix/image.
+        :return: A list of all needed values:
+                1. :max_val: The maximum value in the original array.
+                2. :name: The function's name.
+                3. :orig_shape: The shape of the original matrix/image.
+                4. :output: The output of applying the function to the supplied inputs.
+                5. :test_name: Info about the matrix/image that is being tested.
+                6. :true_binom: The expected filter array.
+        """
         name = func.__name__
-
         output = func(orig_matrix, max_levels, filter_size)
         true_binom = np.array(binomial_coefficients_list(filter_size - 1))
         true_binom = (true_binom / np.sum(true_binom)).reshape(1, true_binom.shape[0])
         orig_shape = orig_matrix.shape
         max_val = np.max(orig_matrix)
         test_name = f"(test on : {test_name}, max_levels: {max_levels}, filter_size: {filter_size})"
+        return max_val, name, orig_shape, output, test_name, true_binom
 
-        # Checks output shape
-        self.assertEqual(2, len(output), msg=f'{name} should return an array of length 2')
-        pyr, filter_vec = output
-
-        # Checks pyr is a normal python array (list)
-        self.assertEqual(type([]), type(pyr), msg=f'In {name}, pyr type should be a normal python array (list)')
-
-        # Checks pyramid size
+    def _check_pyr_structure(self, max_val, name, orig_shape, pyr, test_name, max_levels):
+        """
+        Tests the internal structure of the pyramid (Tests shapes of levels, min level size and sometimes (gaussian)
+        tests normalization of values.
+        :param max_val: The maximum value in the original array.
+        :param name: The function's name.
+        :param orig_shape: The shape of the original matrix/image.
+        :param pyr: The outputted pyramid.
+        :param test_name: Info about the matrix/image that is being tested.
+        :return: -
+        """
+        # Checks maximal pyramid size
         self.assertTrue(max_levels >= len(pyr),
                         msg=f'pyr size should not exceed "max_levels" in {name} function on {test_name}')
 
-        # Checks filter_vec is correct
-        self.assertEqual(f"(1, {filter_size})", str(filter_vec.shape),
-                         msg=f"filter_vec's shape should be (1, {filter_size}), but is {filter_vec.shape}")
-        self.assertIsNone(np.testing.assert_array_equal(true_binom, filter_vec,
-                                                        err_msg=f"\nERROR WAS:\nfilter_vec should look like {true_binom}, but looks like {filter_vec}\n"))
-
-        # Checks pyr's dimensions
+        # Checks minimal level size
         last_lvl_shape = np.array(pyr[-1]).shape
         self.assertTrue(last_lvl_shape[0] >= 16 and last_lvl_shape[1] >= 16,
                         msg=f"In {name}, shape of pyr's last level should not be smaller than (16,16)")
 
+        # Checks internal shapes and vals
         # TODO: Check that the dimensions are definitely going to be powers of 2
         cur_row_amount, cur_col_amount = orig_shape
-
         for i, level in enumerate(pyr):
             self.assertEqual(f"{cur_row_amount, cur_col_amount}", str(np.array(level).shape),
                              msg=f"level {i} in pyr created by {name} on the matrix named '{test_name}' should be of size ({cur_row_amount, cur_col_amount})")
@@ -178,9 +190,48 @@ class TestEx3(unittest.TestCase):
                 self.assertTrue((0 <= np.min(level) and np.max(level) <= max_val),
                                 msg=f"Values of pyr levels in {name}'s output should not be higher than the original image's max value, maybe you forgot to normalize the filter_vec?\nmin_val:{np.min(level)}, max_val:{np.max(level)},level:{i},test_name:{test_name}")
 
+
+    def _test_pyr_module(self, func, orig_matrix, test_name, max_levels, filter_size):
+        """
+        A module that tests the implementation of a pyramid creating function on a specific matrix/image.
+        :param func: The function to test.
+        :param orig_matrix: The matrix/image to test on.
+        :param test_name: Info about the matrix/image that is being tested.
+        :param max_levels: The given max_levels parameter.
+        :param filter_size: The given filter_size parameter.
+        :return: -
+        """
+
+        # Init variables
+        max_val, name, orig_shape, output, test_name, true_binom = self._init_pyr_module_variables(filter_size, func, max_levels, orig_matrix, test_name)
+
+        # get output vals
+        pyr, filter_vec = output
+
+        # Checks output shape
+        self.assertEqual(2, len(output), msg=f'{name} should return an array of length 2')
+
+        # Checks pyr is a normal python array (list)
+        self.assertEqual(type([]), type(pyr), msg=f'In {name}, pyr type should be a normal python array (list)')
+
+        # Checks filter_vec is correct
+        self.assertEqual(f"(1, {filter_size})", str(filter_vec.shape),
+                         msg=f"filter_vec's shape should be (1, {filter_size}), but is {filter_vec.shape}")
+        self.assertIsNone(np.testing.assert_array_equal(true_binom, filter_vec,
+                                                        err_msg=f"\nERROR WAS:\nfilter_vec should look like {true_binom}, but looks like {filter_vec}\n"))
+
+        # Checks pyr's dimensions
+        self._check_pyr_structure(max_val, name, orig_shape, pyr, test_name, max_levels)
+
+
     # -------------------------------- 3.1 helpers --------------------------------
 
     def _test_pyr_static(self, func):
+        """
+        Runs multiple static tests on the images in the "externals" folder.
+        :param func: The function to test.
+        :return: -
+        """
 
         # Test 'test_gaussian_pyr' structure
         self._structure_tester(func, r'(im, max_levels, filter_size)', False, False)
@@ -191,6 +242,13 @@ class TestEx3(unittest.TestCase):
                                   np.int(np.log(np.array(img[0]).shape[0]) - 1), 3)
 
     def _test_pyr_random(self, func):
+        """
+        Runs multiple RANDOM tests on a pyramid constructing function.
+        Checks implementation over the test images with random "max_levels" and "filter_size" variables.
+        Checks implementation over stress tests (45 random matrices of varied sizes and random arguments).
+        :param func: The function to test.
+        :return: -
+        """
 
         # Basic images, random max level and random filter size
         for img in self.images:
@@ -209,15 +267,32 @@ class TestEx3(unittest.TestCase):
     # -------------------------------- 3.1 tests --------------------------------
 
     def test_build_gaussian_pyramid_static(self):
+        """
+        Runs a static test on "build_gaussian_pyramid".
+        :return: -
+        """
         self._test_pyr_static(sol.build_gaussian_pyramid)
 
     def test_build_gaussian_pyramid_random(self):
+        def test_build_gaussian_pyramid_static(self):
+            """
+            Runs a random test on "build_gaussian_pyramid".
+            :return: -
+            """
         self._test_pyr_random(sol.build_gaussian_pyramid)
 
     def test_build_laplacian_pyramid_static(self):
+        """
+        Runs a static test on "build_laplacian_pyramid".
+        :return: -
+        """
         self._test_pyr_static(sol.build_laplacian_pyramid)
 
     def test_build_laplacian_pyramid_random(self):
+        """
+        Runs a random test on "build_laplacian_pyramid".
+        :return: -
+        """
         self._test_pyr_random(sol.build_laplacian_pyramid)
 
 
