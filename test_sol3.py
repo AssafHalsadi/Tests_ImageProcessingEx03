@@ -10,6 +10,8 @@ import inspect
 import runner as run
 import ast
 
+import cv2
+
 
 # ================================ helper functions ================================
 
@@ -295,6 +297,10 @@ class TestEx3(unittest.TestCase):
         """
         self._test_pyr_random(sol.build_laplacian_pyramid)
 
+    # -------------------------------- 3.2 test module --------------------------------
+
+    # TODO : check how to test this without relying on 3.1 implementation.
+    # Tried working with cv2.downPyr and cv2.upPyr, uses a 2d gaussian which wields too different of a result.
 
 if __name__ == '__main__':
     runner = run.CustomTextTestRunner()
