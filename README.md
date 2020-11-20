@@ -62,6 +62,7 @@ _images might not work there_
 
 ## Collaborators<a name="COL"></a>
 [Assaf Halsadi](https://github.com/AssafHalsadi) :israel:
+[Ron Moran](https://github.com/ronmoran) :israel:
 
 ## Contact Info<a name="CONTACT"></a>
 If you find any mistakes, or have any questions - please contact me through the course's Slack [![Slack](https://img.shields.io/badge/HUJI_IMPR_20%20slack-join-green?logo=slack&labelColor=4A154B)](https://join.slack.com/t/huji-impr-20/shared_invite/zt-i5z2lgja-vs8c6RptH8t2_jou~Wvhuw)
