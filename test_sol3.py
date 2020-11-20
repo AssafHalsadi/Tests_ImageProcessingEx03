@@ -13,6 +13,8 @@ import ast
 import cv2
 from scipy.stats import pearsonr
 
+import matplotlib.pyplot as plt
+
 
 # ================================ helper functions ================================
 
@@ -43,7 +45,7 @@ def read_image(filename, representation):
     return im_float
 
 
-def mse(im1, im2):
+def _mse(im1, im2):
     """
     Calculates 'Mean Squared Error' between the two similar shaped images, which is the sum of the squared difference
     between the two images. Normalizes the MSE.
@@ -114,7 +116,7 @@ def _cv2_build_gaussian_pyramid(im, levels):
     # Building a gaussian pyramid using a cv2 builtIn capabilities
     gaussian_pyr = []
     gaussian_pyr.append(np.array(im))
-    for i in range(levels-1):
+    for i in range(levels - 1):
         layer = np.array(cv2.pyrDown(layer))
         gaussian_pyr.append(layer)
     return gaussian_pyr
@@ -129,7 +131,7 @@ def _cv2_build_laplacian_pyramid(gaussian_pyr):
     # Computing a laplacian pyramid using the gaussian pyramid created using cv2
     laplacian_pyr = []
     laplacian_pyr.append(gaussian_pyr[-1])
-    for i in range(len(gaussian_pyr)-1, 0, -1):
+    for i in range(len(gaussian_pyr) - 1, 0, -1):
         size = (gaussian_pyr[i - 1].shape[1], gaussian_pyr[i - 1].shape[0])
         gaussian_expanded = cv2.pyrUp(gaussian_pyr[i], dstsize=size)
         laplacian_layer = cv2.subtract(gaussian_pyr[i - 1], gaussian_expanded)
@@ -184,8 +186,8 @@ class TestEx3(unittest.TestCase):
         self.assertEqual(signature, str(inspect.signature(func)),
                          msg=f"{func_name} signature should be {signature} but is {str(inspect.signature(func))}")
 
-
-    def _compare_images(self, expected_im, sol_image, tested_im_name, tested_func_name, pearson_thresh=0.9, mse_thresh=0.05):
+    def _compare_images(self, expected_im, sol_image, tested_im_name, tested_func_name, pearson_thresh=0.9,
+                        mse_thresh=0.05):
         """
         Compares two images by first comparing their shape, and then checking their similarities by checking the pearson's
         "r" coefficient is higher than "pearson_tresh" and the mse error is lower than "mse_tresh".
@@ -205,7 +207,7 @@ class TestEx3(unittest.TestCase):
         # print(f"for {tested_im_name}, mse was : {self.mse(im1, im2)}")
         #
         # print(f"\n================\n")
-        self.assertTrue(r > pearson_thresh and mse(expected_im, sol_image) < mse_thresh,
+        self.assertTrue(r > pearson_thresh and _mse(expected_im, sol_image) < mse_thresh,
                         msg=f"The {tested_im_name} image from {tested_func_name}'s output is not so similar to the built in implementation... maybe you should used plt.imshow on the new image and see what it looks like")
 
     # ================================ Part III Tests ================================
@@ -397,6 +399,8 @@ class TestEx3(unittest.TestCase):
 
         self._compare_images(im, new_im, im_name, r'laplacian_to_image')
 
+    # -------------------------------- 3.2 test --------------------------------
+
     def test_laplacian_to_image(self):
         """
         Tests laplacian_to_image. I test it on a built in implementation laplacian pyramid so that it isn't dependant
@@ -411,8 +415,74 @@ class TestEx3(unittest.TestCase):
         for test_im in self.images:
             self._test_reconstruct_module(test_im[0], test_im[1])
 
+    # -------------------------------- 3.3 test module --------------------------------
 
+    def _test_reder_module(self, im, im_name, level, is_lap):
+        """
+        Tests the render_pyramid function on a single image.
+        :param im: A grayscale image to test on.
+        :param im_name: Name of the image.
+        :param level: Amount of levels for the pyramid.
+        :return: -
+        """
 
+        # Computes the gaussian/laplacian pyramid using the cv2 implementations
+        pyr = _cv2_build_gaussian_pyramid(im, level)
+        if is_lap:
+            pyr = _cv2_build_laplacian_pyramid(pyr)
+
+        # computes the render using the solution
+        res = sol.render_pyramid(pyr, level)
+
+        # computes the expected x_axis shape of the output (cols)
+        x_size = im.shape[1]
+        factor = 2
+        x_size = x_size
+        for i in range(1, level):
+            x_size += (im.shape[1] // (factor ** i))
+
+        # Compares the expected result shape to the actual shape
+        self.assertEqual(x_size, res.shape[1],
+                         msg=f"After rendering, the image's ({im_name}) x axis should be of length {x_size}, but is {res.shape[1]}, tested with {level} levels")
+        self.assertEqual(im.shape[0], res.shape[0],
+                         msg=f"After rendering, the image's ({im_name}) y axis should be of length {im.shape[0]}, but is {res.shape[0]}, tested with {level} levels")
+
+        # Checks the result was padded with zeros using a mask
+        col = im.shape[1]
+        mask = np.zeros((im.shape[0], x_size))
+        for i in range(1, level):
+            row = pyr[i].shape[0]
+            mask[row:, col:] = 1
+            col += pyr[i].shape[1]
+        self.assertTrue((res*mask == 0).all(), msg=f"The blank spaces in the rendered image should be black")
+
+    # -------------------------------- 3.3 tests --------------------------------
+
+    def test_render_pyramid_static(self):
+        """
+        Tests the render_pyramid with static variables on all stock images.
+        :return: -
+        """
+
+        # tests the implementation structure according to pdf
+        self._structure_tester(sol.render_pyramid, r'(pyr, levels)', no_loops=False, no_return=False)
+
+        # Checks on all stock memes (images)
+        for test_im in self.images:
+            self._test_reder_module(test_im[0], test_im[1], 4, is_lap=False)
+            self._test_reder_module(test_im[0], test_im[1], 4, is_lap=True)
+
+    def test_render_pyramid_random(self):
+        """
+        Tests 'render_pyramid' with random level variables on ALL stock images.
+        :return: -
+        """
+        # Checks on all stock memes (images) with random pyramid level amounts
+        for test_im in self.images:
+            for i in range(20):
+                levels = np.random.choice(np.arange(1, np.int(np.log(np.array(test_im[0]).shape[0]) - 1)))
+                self._test_reder_module(test_im[0], test_im[1], levels, is_lap=False)
+                self._test_reder_module(test_im[0], test_im[1], levels, is_lap=True)
 
 
 if __name__ == '__main__':
