@@ -62,6 +62,7 @@ _images might not work there_
 
 ## Collaborators<a name="COL"></a>
 [Assaf Halsadi](https://github.com/AssafHalsadi) :israel:
+
 [Ron Moran](https://github.com/ronmoran) :israel:
 
 ## Contact Info<a name="CONTACT"></a>
