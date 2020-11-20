@@ -11,6 +11,7 @@ import runner as run
 import ast
 
 import cv2
+from scipy.stats import pearsonr
 
 
 # ================================ helper functions ================================
@@ -40,6 +41,21 @@ def read_image(filename, representation):
         im_float = im_float / 255
 
     return im_float
+
+
+def mse(im1, im2):
+    """
+    Calculates 'Mean Squared Error' between the two similar shaped images, which is the sum of the squared difference
+    between the two images. Normalizes the MSE.
+    The lower the error the more similar the images are.
+    :param im1: First image.
+    :param im2: Second image.
+    :return: err: The error.
+    """
+    err = np.sum((im1.astype("float") - im2.astype("float")) ** 2)
+    err /= float(im1.shape[0] * im1.shape[1])
+
+    return err
 
 
 def _generate_images(directory_path):
@@ -82,6 +98,44 @@ def _has_return(function):
     :return: True if it contains a return statement, False otherwise.
     """
     return _does_contain(function, ast.Return)
+
+
+# -------------------------------- ex3-specifics --------------------------------
+
+
+def _cv2_build_gaussian_pyramid(im, levels):
+    """
+    Builds a gaussian pyramid for a given image using the built in reduce function in cv2.
+    :param im: The given image.
+    :param levels: Amount of levels for the pyramid.
+    :return: gaussian_pyr: The gaussian pyramid.
+    """
+    layer = im.copy()
+    # Building a gaussian pyramid using a cv2 builtIn capabilities
+    gaussian_pyr = []
+    gaussian_pyr.append(np.array(im))
+    for i in range(levels-1):
+        layer = np.array(cv2.pyrDown(layer))
+        gaussian_pyr.append(layer)
+    return gaussian_pyr
+
+
+def _cv2_build_laplacian_pyramid(gaussian_pyr):
+    """
+    Builds a laplacian pyramid from a given gaussian pyramid using cv2 built in expand.
+    :param gaussian_pyr: The given gaussian pyramid.
+    :return: The laplacian pyramid.
+    """
+    # Computing a laplacian pyramid using the gaussian pyramid created using cv2
+    laplacian_pyr = []
+    laplacian_pyr.append(gaussian_pyr[-1])
+    for i in range(len(gaussian_pyr)-1, 0, -1):
+        size = (gaussian_pyr[i - 1].shape[1], gaussian_pyr[i - 1].shape[0])
+        gaussian_expanded = cv2.pyrUp(gaussian_pyr[i], dstsize=size)
+        laplacian_layer = cv2.subtract(gaussian_pyr[i - 1], gaussian_expanded)
+        laplacian_pyr.append(laplacian_layer)
+    laplacian_pyr = laplacian_pyr[::-1]
+    return laplacian_pyr
 
 
 # ================================ unittest class ================================
@@ -129,6 +183,30 @@ class TestEx3(unittest.TestCase):
         # Checks the signature of the function equals the pdf
         self.assertEqual(signature, str(inspect.signature(func)),
                          msg=f"{func_name} signature should be {signature} but is {str(inspect.signature(func))}")
+
+
+    def _compare_images(self, expected_im, sol_image, tested_im_name, tested_func_name, pearson_thresh=0.9, mse_thresh=0.05):
+        """
+        Compares two images by first comparing their shape, and then checking their similarities by checking the pearson's
+        "r" coefficient is higher than "pearson_tresh" and the mse error is lower than "mse_tresh".
+        :param expected_im: The reference image.
+        :param sol_image: The tested image.
+        :param tested_im_name: Name of the image being tested.
+        :param tested_func_name: Name of the function that changed the image.
+        :param pearson_thresh: The pearson's r coefficient threshold.
+        :param mse_thresh: The mse error threshold.
+        :return:
+        """
+        self.assertEqual(expected_im.shape, sol_image.shape,
+                         msg=f"The '{tested_func_name}' function on the {tested_im_name} image should be similar to the built in output, so the output's shape should be equal to the shape of the built in shape")
+        r = pearsonr(expected_im.flatten(), sol_image.flatten())[0]
+        # print(f"for {tested_im_name}, the pearsonr was {co}")
+        #
+        # print(f"for {tested_im_name}, mse was : {self.mse(im1, im2)}")
+        #
+        # print(f"\n================\n")
+        self.assertTrue(r > pearson_thresh and mse(expected_im, sol_image) < mse_thresh,
+                        msg=f"The {tested_im_name} image from {tested_func_name}'s output is not so similar to the built in implementation... maybe you should used plt.imshow on the new image and see what it looks like")
 
     # ================================ Part III Tests ================================
 
@@ -192,7 +270,6 @@ class TestEx3(unittest.TestCase):
                 self.assertTrue((0 <= np.min(level) and np.max(level) <= max_val),
                                 msg=f"Values of pyr levels in {name}'s output should not be higher than the original image's max value, maybe you forgot to normalize the filter_vec?\nmin_val:{np.min(level)}, max_val:{np.max(level)},level:{i},test_name:{test_name}")
 
-
     def _test_pyr_module(self, func, orig_matrix, test_name, max_levels, filter_size):
         """
         A module that tests the implementation of a pyramid creating function on a specific matrix/image.
@@ -205,7 +282,10 @@ class TestEx3(unittest.TestCase):
         """
 
         # Init variables
-        max_val, name, orig_shape, output, test_name, true_binom = self._init_pyr_module_variables(filter_size, func, max_levels, orig_matrix, test_name)
+        max_val, name, orig_shape, output, test_name, true_binom = self._init_pyr_module_variables(filter_size, func,
+                                                                                                   max_levels,
+                                                                                                   orig_matrix,
+                                                                                                   test_name)
 
         # get output vals
         pyr, filter_vec = output
@@ -224,7 +304,6 @@ class TestEx3(unittest.TestCase):
 
         # Checks pyr's dimensions
         self._check_pyr_structure(max_val, name, orig_shape, pyr, test_name, max_levels)
-
 
     # -------------------------------- 3.1 helpers --------------------------------
 
@@ -281,6 +360,7 @@ class TestEx3(unittest.TestCase):
             Runs a random test on "build_gaussian_pyramid".
             :return: -
             """
+
         self._test_pyr_random(sol.build_gaussian_pyramid)
 
     def test_build_laplacian_pyramid_static(self):
@@ -299,8 +379,41 @@ class TestEx3(unittest.TestCase):
 
     # -------------------------------- 3.2 test module --------------------------------
 
-    # TODO : check how to test this without relying on 3.1 implementation.
-    # Tried working with cv2.downPyr and cv2.upPyr, uses a 2d gaussian which wields too different of a result.
+    def _test_reconstruct_module(self, im, im_name):
+        """
+        Tests module for laplacian_to_image on a specific image.
+        :param im: The image to test.
+        :param im_name: The image's name.
+        :return: -
+        """
+
+        my_gaussian, filter_vec = sol.build_gaussian_pyramid(im, 4, 5)
+        my_laplacian, filter_vec = sol.build_laplacian_pyramid(im, 4, 5)
+
+        gaussian_pyr = _cv2_build_gaussian_pyramid(im, 4)
+        laplacian_pyr = _cv2_build_laplacian_pyramid(gaussian_pyr)
+
+        new_im = sol.laplacian_to_image(laplacian_pyr, filter_vec, np.ones(len(laplacian_pyr)))
+
+        self._compare_images(im, new_im, im_name, r'laplacian_to_image')
+
+    def test_laplacian_to_image(self):
+        """
+        Tests laplacian_to_image. I test it on a built in implementation laplacian pyramid so that it isn't dependant
+        on the user's implementation of other functions.
+        :return: -
+        """
+        # Tests function structure according to pdf
+        self._structure_tester(sol.laplacian_to_image, r'(lpyr, filter_vec, coeff)', False, False)
+
+        # Uses a laplacian pyramid created using cv2 and compares laplacian_to_image's output on it to the original
+        # image.
+        for test_im in self.images:
+            self._test_reconstruct_module(test_im[0], test_im[1])
+
+
+
+
 
 if __name__ == '__main__':
     runner = run.CustomTextTestRunner()
