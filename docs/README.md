@@ -1,6 +1,6 @@
 # HUJI Image Processing course (67829) Ex3 Tests 2020/2021<a name="TOP"></a>
 [![Build Status](https://img.shields.io/badge/build%20version-1.0-green)](https://github.com/AssafHalsadi/Tests_ImageProcessingEx02)
-![cover](readme_assets/cover.png)
+![cover](../readme_assets/cover.png)
 
 Testing suite for the third exercise of Image Processing course (67829) at HUJI. The suite includes basic tests for most of the exercises functions that checks the API, the return values, usage of loops and some functionality. In this README I will go over [requirements](#REQ), a [guide](#HOWTO) of how to use the tests, each tests coverage and what it means to pass it.
 
