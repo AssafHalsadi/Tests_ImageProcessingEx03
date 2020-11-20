@@ -357,12 +357,10 @@ class TestEx3(unittest.TestCase):
         self._test_pyr_static(sol.build_gaussian_pyramid)
 
     def test_build_gaussian_pyramid_random(self):
-        def test_build_gaussian_pyramid_static(self):
-            """
-            Runs a random test on "build_gaussian_pyramid".
-            :return: -
-            """
-
+        """
+        Runs a random test on "build_gaussian_pyramid".
+        :return: -
+        """
         self._test_pyr_random(sol.build_gaussian_pyramid)
 
     def test_build_laplacian_pyramid_static(self):
