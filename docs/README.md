@@ -41,18 +41,16 @@ All tests cover basic API checks, correct usage of return/loops and some specifi
     * [Trough Command Line](#CMD2) (Textual Interface)
     * [Through Pycharm](#PY2)
 * Test Scopes
-    * DFT Tests
-        * ['test_DFT_IDFT_1D'](#1D)
-        * ['test_DFT2_IDFT2'](#2D)
-    * Audio Speed Tests
-        * ['test_change_rate'](#RATE)
-        * ['test_resize'](#RESIZE)
-        * ['test_change_samples'](#SAMPLES)
-        * ['test_resize_spectogram'](#SPECTROGRAM)
-        * ['test_resize_vocoder'](#VOCODER)
-    * :x: DEPRECATED :x: ~~Derivative Tests~~ 
-        * [~~'test_conv_der'~~](#CONVDER)
-        * [~~'test_fourier_der'~~](#FOURIERDER)
+    * Pyramid Building
+        * ['test_build_gaussian_pyramid_static'](#GAUSTAT)
+        * ['test_build_gaussian_pyramid_random'](#GAURAND)
+        * ['test_build_laplacian_pyramid_static'](#LAPSTAT)
+        * ['test_build_laplacian_pyramid_random'](#LAPRAND)
+    * Recreating Image
+        * ['test_laplacian_to_image'](#LAPTOIM)
+    * Rendering Pyramids
+        * ['test_render_pyramid_static'](#RENDERSTAT)
+        * ['test_render_pyramid_random'](#RENDERRAND)
 
     
 ## :books: Documentation<a name="DOC"></a>
@@ -109,24 +107,16 @@ To run the tests you will only need the following things:
     </details>
     
     * You might be prompted to enter your [CSE user credentials](https://wiki.cs.huji.ac.il/wiki/Password_and_OTP#OTP_and_UNIX_passwords)
-    
-    :x: Step 2 no longer needed :x:
-    
-~~2. Unpack the _output_compare.rar_ located in the _output_compare_ folder.~~
-    <details>
-    <summary>Open Image</summary>
-    <p><img src="../readme_assets/05.png" width="300"></p>
-    </details>
 
  
-3. Copy both _sol2.py_, _ex2_helper.py_ and any other files needed for your implementation to the _tests_ folder.
-4. At the end your "tests" folder should look like this:
+2. Copy _sol3.py_ and any other files needed for your implementation to the _tests_ folder.
+3. At the end your "tests" folder should look like this:
     <details>
     <summary>Open Image</summary>
     <p><img src="../readme_assets/11.png" width="300"></p>
     </details> 
    
-5. That is it, no need for complicated voodoo. :smile:
+4. That is it, no need for complicated voodoo. :smile:
 
 ### Usage 
 There are two main ways to run the tests, via the Textual Interface or via pycharm's built in unittest support.
@@ -148,11 +138,17 @@ Flip which lines are commented like so:
 ![testList02](../readme_assets/08.png)
 and delete the names of the tests you don't want to run.
 #### Pycharm<a name="PY"></a>
-1. Go to _test _ sol2.py_ file, located in the "tests" folder.
+1. Go to _test _ sol3.py_ file, located in the "tests" folder.
 2. To run all of the tests, scroll down to the TestSuite start and click the green "play" button :
     <details>
     <summary>Open Image</summary>
     <p><img src="../readme_assets/09.png" width="500"></p>
+    </details>
+    
+    or right click anywhere in the page and click "Run .....":
+    <details>
+    <summary>Open Image</summary>
+    <p><img src="../readme_assets/new.png" width="500"></p>
     </details>
 
 3. To run an individual test, scroll down to the test's function and click on the green "play" button beside it :
@@ -230,132 +226,84 @@ Each error explanation will begin with the word "Failure", followed by the trace
     </details>
 
 ## Test Scopes<a name="SCOPES"></a>
-### DFT Tests
-All DFT tests compare the output to the built in numpy.fft counterpart functions.
-#### 'test_DFT_IDFT_1D'<a name="1D"></a>
+### Pyramid Building
+All Pyramid Building tests check the structure of your pyramids.
+#### 'test_build_gaussian_pyramid_static' <a name="GAUSTAT"></a>
 ```python
 """
-
-Tests both DFT and IDFT functions by comparing them to the built in np.fft.___ functions.
-Allows 1.e-5 difference.
-:return: -
-
-"""
-```
-This test tests both the DFT and IDFT functions applied to the _aria _ 4kHz.wav_ file, it covers:
-* Checks no loops are used in the implementation.
-* Checks the signature is correct.
-* Makes sure the shape and type of the output is correct (UPDATE 1.3: Checks the shape wasn't changed from input).
-* Compares the output to the 'np.fft.fft' and 'np.fft.ifft' functions, allowing errors of up to 1.e-5 (as the built in implementation is more precise).  
-
-#### 'test_DFT2_IDFT2'<a name="2D"></a>
-```python
-"""
-Tests both DFT2 and IDFT2 functions by comparing them to the built in np.fft.___ functions.
-Allows 1.e-5 difference.
+Runs a static test on "build_gaussian_pyramid".
 :return: -
 """
 ```
-This test tests both the DFT2 and IDFT2 functions applied to the _monkey.jpg_ file in grayscale mode, it covers:
+This test tests both the structure of the build_gaussian_pyramid's output:
+* Checks the value range does not change.
 * Checks the signature is correct.
-* Makes sure the shape and type of the output is correct (UPDATE 1.3: Checks the shape wasn't changed from input).
-* Compares the output to the 'np.fft.fft2' and 'np.fft.ifft2' functions, allowing errors of up to 1.e-5 (as the built in implementation is more precise).  
+* Makes sure the shape and type of the output is correct - including on each pyramid level.
+* Checks the filter was created correctly.  
+* Checks on both stock memes (images) and taylor made matrices.
 
-### Audio Speed Tests
-All speed tests check the new speed is correct but not all of them go into HOW the speed was changed.
-#### 'test_change_rate'<a name="RATE"></a>
+#### 'test_build_gaussian_pyramid_random'<a name="GAURAND"></a>
 ```python
 """
-Tests the change rate function by comparing the outputted wav speed to the speed its supposed to be in
-and also makes sure the data did not change.
+Runs a random test on "build_gaussian_pyramid".
 :return: -
 """
 ```
-This test tests the "change_rate" function applied to multiple ratios, it covers:
-* Checks the signature is correct.
-* Makes sure the function does not return anything.
-* Makes sure the wav file data was not changed by the function.
-* Checks the new speed of the wav file is correct, allowing errors of up to 1.e-3.  
+Random variant of the previous test (stress testing).
 
-#### 'test_resize'<a name="RESIZE"></a>
+#### 'test_build_laplacian_pyramid_static' <a name="LAPSTAT"></a>
 ```python
 """
-Tests resize function by checking the outputted arrays have the correct length in correspondance to the given
-ratio. DOES NOT test how the array was resized.
+Runs a static test on "build_laplacian_pyramid".
 :return: -
 """
 ```
-This test tests the "resize" function applied to multiple arrays, it covers:
+This test tests both the structure of the build_laplacian_pyramid's output:
 * Checks the signature is correct.
-* Makes sure the returned array is 1D.
-* Makes sure the returned dtype is correct according to pdf.
-* Checks the new size is correct.
+* Makes sure the shape and type of the output is correct - including on each pyramid level.
+* Checks the filter was created correctly.  
+* Checks on both stock memes (images) and taylor made matrices.
 
-:warning: Does not check HOW you resize the array, make sure you follow the pdf :warning:
-
-#### 'test_change_samples'<a name="SAMPLES"></a>
-:round_pushpin: This test might take a lot of time to run
+#### 'test_build_laplacian_pyramid_random'<a name="LAPRAND"></a>
 ```python
 """
-Tests the "change_samples" function by using the speed test module.
+Runs a random test on "build_laplacian_pyramid".
 :return: -
 """
 ```
-This test tests the "change_samples" function applied to multiple ratios, it covers:
-* Checks the signature is correct.
-* Makes sure the function does not return anything.
-* Makes sure the wav file rate was not changed by the function.
-* Checks the new speed of the wav file is correct, allowing errors of up to 1.e-3.  
+Random variant of the previous test (stress testing).
 
-#### 'test_resize_spectrogram'<a name="SPECTROGRAM"></a>
-```python
-"""                                                                
-Tests the "resize_spectrogram" function by using the speed test module.
-:return: -                                                         
-"""
-```
-This test tests the "resize_spectrogram" function applied to multiple ratios, it covers:
-* Checks the signature is correct.
-* Makes sure the wav file rate was not changed by the function.
-* Checks the new speed of the wav file is correct, allowing errors of up to 1.e-1 for fast forwarding and 5.e-1 for slowing down.
-
-#### 'test_resize_vocoder'<a name="VOCODER"></a>
+### Recreating Images
+#### 'test_laplacian_to_image'<a name="LAPTOIM"></a>
 ```python
 """
-Tests the "resize_vocoder" function by using the speed test module.
+Tests laplacian_to_image. I test it on a built in implementation laplacian pyramid so that it isn't dependant
+on the user's implementation of other functions.
 :return: -
 """
 ```
-This test tests the "resize_vocoder" function applied to multiple ratios, it covers:
-* Checks the signature is correct.
-* Makes sure the wav file rate was not changed by the function.
-* Checks the new speed of the wav file is correct, allowing errors of up to 1.e-1 for fast forwarding and 5.e-1 for slowing down.
+Compares the reconstructed image to the real one by using pearsons R coefficient and MSE by using the implementation on a semi-builtIn cv2 implementation  
 
-# :x: Deprecated tests :x:
-### Derivative Tests
-All derivative tests compare to MY OUTPUT and might be wrong due to that.
-#### ~~'test_conv_der'~~<a name="CONVDER"></a>
+### Rendering Pyramids
+#### 'test_render_pyramid_static'<a name="RENDERSTAT"></a>
 ```python
 """
-Tests the "conv_der" function by using the derivative testing module.
+Tests the render_pyramid with static variables on all stock images.
 :return: -
 """
 ```
-This test tests the "conv_der" function applied to multiple images, it covers:
+This test tests the "render_pyramid" function applied to multiple images, it covers:
 * Checks the signature is correct.
-* Compares output to MY RESULTS. 
+* Makes sure the dimensions are correct.
+* Makes sure it was padded with zeros.
 
-#### ~~'test_fourier_der'~~<a name="FOURIERDER"></a>
-
-:round_pushpin: This test might take a lot of time to run
+#### 'test_render_pyramid_random'<a name="RENDERRAND"></a>
 ```python
 """
-Tests the "fourier_der" function by using the derivative testing module.
+Tests 'render_pyramid' with random level variables on ALL stock images.
 :return: -
 """
 ```
-This test tests the "fourier_der" function applied to multiple images, it covers:
-* Checks the signature is correct.
-* Compares output to MY RESULTS. 
+Random variant of the previous test (stress testing).
 
 
