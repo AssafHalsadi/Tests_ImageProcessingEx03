@@ -62,7 +62,7 @@ _images might not work there_
 ## Collaborators<a name="COL"></a>
 [Assaf Halsadi](https://github.com/AssafHalsadi) :israel:
 
-[Ron Moran](https://github.com/ronmoran) :israel:
+<!-- [Ron Moran](https://github.com/ronmoran) :israel: -->
 
 ## Contact Info<a name="CONTACT"></a>
 :heavy_exclamation_mark: please do not send me private messages about the tests through whatsapp
