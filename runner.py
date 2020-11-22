@@ -3,6 +3,26 @@ import itertools
 import test_sol3 as tester
 import re
 
+DOGGO ="          _ _\n\
+     _(,_/ \ \____________\n\
+     |`. \_@_@   `.     ,'\n\
+     |\ \ .        `-,-'\n\
+     || |  `-.____,-'\n\
+     || /  /\n\
+     |/ |  |\n\
+`..     /   \\\n\
+  \\   /    |\n\
+  ||  |      \\\n\
+   \\ /-.    |\n\
+   ||/  /_   |\n\
+   \(_____)-'_)"
+
+DOGGO_FRAME = ": 𝗦𝗨𝗖𝗖𝗘𝗦𝗦 𝗗𝗢𝗚𝗚𝗢 𝗪𝗜𝗦𝗛𝗘𝗦 𝗬𝗢𝗨 𝗦𝗨𝗖𝗖𝗘𝗦𝗦 :"
+
+YOU_PASSED = " ✩ ░▒▓▆▅▃▂▁ 𝐘𝐎𝐔 𝐏𝐀𝐒𝐒𝐄𝐃 ▁▂▃▅▆▓▒░ ✩"
+
+YOU_FAILED = "❚█══YOU FAILED══█❚"
+
 
 class CustomTextTestResult(unittest.runner.TextTestResult):
     """Extension of TextTestResult to support numbering test cases"""
@@ -27,6 +47,22 @@ class CustomTextTestResult(unittest.runner.TextTestResult):
             test.progress_index = progress
 
         return super(CustomTextTestResult, self).startTest(test)
+
+    def addSuccess(self, test):
+        super(CustomTextTestResult, self).addSuccess(test)
+        if self.showAll:
+            self.stream.writeln("✔ You passed ✔")
+        elif self.dots:
+            self.stream.write('.')
+            self.stream.flush()
+
+    def addFailure(self, test, err):
+        super(CustomTextTestResult, self).addFailure(test, err)
+        if self.showAll:
+            self.stream.writeln("❌ You failed ❌")
+        elif self.dots:
+            self.stream.write('F')
+            self.stream.flush()
 
     def _exc_info_to_string(self, err, test):
         """Gets an exception info string from super, and prepends 'Test Number' line"""
@@ -61,14 +97,16 @@ class CustomTextTestRunner(unittest.runner.TextTestRunner):
         return result
 
 
+
+
 def get_tests():
     """
     Generates and returns a list of all the names of tests to run through the textual interface
     :return: The aforementioned list.
     """
-    # tests = ['test_DFT2_IDFT2', 'test_DFT_IDFT_1D', 'test_change_rate', 'test_change_samples', 'test_resize', 'test_resize_spectrogram', 'test_resize_vocoder']
-    # return [tester.TestEx2(method) for method in tests]
-    return [tester.TestEx3(method) for method in dir(tester.TestEx3) if method.startswith('test_')]
+    # tests = ['test_build_gaussian_pyramid_random', 'test_build_gaussian_pyramid_static', 'test_build_laplacian_pyramid_random', 'test_build_laplacian_pyramid_static', 'test_laplacian_to_image', 'test_render_pyramid_random', 'test_render_pyramid_static']
+    # return [tester.TestEx3(method) for method in tests]
+    return [tester.TestEx3(method) for method in dir(tester.TestEx3) if method.startswith('test')]
 
 
 if __name__ == '__main__':
@@ -78,4 +116,10 @@ if __name__ == '__main__':
 
     test_suite.addTests(tests)
 
-    CustomTextTestRunner(verbosity=2).run(test_suite)
+    runner = CustomTextTestRunner(verbosity=2).run(test_suite)
+    if runner.wasSuccessful():
+        print(YOU_PASSED)
+        print(DOGGO_FRAME)
+        print(DOGGO)
+    else:
+        print(YOU_FAILED)
